@@ -53,10 +53,9 @@ import java.io.IOException;
  * node tree, for instance if a more general pattern may match already nodeged patterns that 
  * should not be processed by {@link #hideAll}. Ignored nodes are not processed by 
  * {@link #hideAll}, {@link #replaceAll} and {@link #unhideAll}. The "ignore" status of 
- * a node can be retrieved by {@link #getIgnore}. Text is by default "ignored", while new 
- * nodes are be default "unignored". Text that has not been "hidden" yet containing
- * nodes that are ignored can be "hidden" using {@link #hideTheRest}.  Specific nodes can be 
- * "ignored" by {@link #ignore}. 
+ * a node can be retrieved by {@link #getIgnore}. New nodes are be default "unignored".
+ * Text that has not been "hidden" yet containing nodes that are ignored can be "hidden" 
+ * using {@link #hideTheRest}.  Specific nodes can be "ignored" by {@link #ignore}. 
  * 
  * <p> Anchors are non-ascii characters that are defined and used as labels to
  * make the labels unique. 
@@ -203,6 +202,23 @@ public final class RegexNode {
     private boolean marked=false;
     private boolean unfold=false;
     /**
+     * Default arguments
+     **/
+    private String  _node="undefined"; 
+    private String  _label="undefined"; 
+    private String  _tag = "?"; 
+    private String  _pattern=".*";
+    private String  _replacement="$0";
+    private String  _att="attribute";
+    private String[]  _path=new String[0]; 
+    private int  _group=0;
+    // <tag>;label:string;
+    private Character _o=':'; // assign
+    private Character _d=';'; // delimiter
+    private Character _a='¤'; // tag
+    private Character _t=null; // node
+    private Character _s= '¤'; 
+    /**
      * The "node" name for this node.
      */
     private String node="";
@@ -278,13 +294,16 @@ public final class RegexNode {
 	setNodeName(nodeName);
     }
     public RegexNode(String originalText, Character o, Character d) {
+	this.mark(o,d);
 	Character a=null;
 	Character t=null;
 	this.parentNode=null; // this is the top node
 	init(originalText);
 	decode_(getText(),-1,o,d,a,-1,t);
+	this.mark(o,d,a);
     }
     public RegexNode(String originalText, Character o, Character d, Character a) {
+	this.mark(o,d,a);
 	Character t=null;
 	this.parentNode=null; // this is the top node
 	init(originalText);
@@ -292,11 +311,15 @@ public final class RegexNode {
     }
     public RegexNode(String originalText, Character o, Character d, Character t, RegexNode... nodes) {
 	Character a=null;
+	this.assignMark(o);
+	this.delimiterMark(d);
+	this.nodeMark(t);
 	this.parentNode=null; // this is the top node
 	init(originalText);
 	decode_(getText(),-1,o,d,a,-1,t,nodes);
     }
     public RegexNode(String originalText, Character o, Character d, Character a, Character t, RegexNode... nodes) {
+	this.mark(o,d,a,t);
 	this.parentNode=null; // this is the top node
 	init(originalText);
 	decode_(getText(),-1,o,d,a,-1,t,nodes);
@@ -376,6 +399,80 @@ public final class RegexNode {
 	}
 	ignored=node.ignored;
     }
+    // 
+    //******************** A R G U M E N T S ******************
+    //
+    public RegexNode node(String node) {
+	this._node=node;
+	return this;
+    }
+    public RegexNode label(String label) {
+	this._label=label;
+	return this;
+    }
+    public RegexNode tag(String tag) {
+	this._tag=tag;
+	return this;
+    }
+    public RegexNode pattern(String pattern) {
+	this._pattern=pattern;
+	return this;
+    }
+    public RegexNode replacement(String replacement) {
+	this._replacement=replacement;
+	return this;
+    }
+    public RegexNode attribute(String att) {
+	this._att=att;
+	return this;
+    }
+    public RegexNode path(String... path) {
+	this._path=path;
+	return this;
+    }
+    public RegexNode path(String[] name1, String... name2) {
+	return path(concat(name1,name2));
+    }
+    public RegexNode assignMark (Character o) {
+	// <tag><delimiter>label<assign>string<delimiter>
+	// "this is a ¤;name:test;"  equivalent to "this is a test"
+	this._o=o; // assign,
+	return this;
+    }
+    public RegexNode delimiterMark (Character d) {
+	// <tag><delimiter>label<assign>string<delimiter>
+	// "this is a ¤;name:test;"  equivalent to "this is a test"
+	this._d=d; // delimeter
+	return this;
+    }
+    public RegexNode tagMark (Character a) {
+	// <tag><delimiter>label<assign>string<delimiter>
+	// "this is a ¤;name:test;"  equivalent to "this is a test"
+	this._a=a; // tag
+	return this;
+    }
+    public RegexNode nodeMark (Character t) {
+	// <tag><delimiter>label<assign>string<delimiter>
+	// "this is a ¤;name:test;"  equivalent to "this is a test"
+	this._t=t; // tag
+	return this;
+    }
+    public RegexNode splitMark (Character s) {
+	this._s=s; // split
+	return this;
+    }
+    public RegexNode mark (Character o) {
+	return this.assignMark(o);
+    }
+    public RegexNode mark (Character o,Character d) {
+	return this.mark(o).delimiterMark(d);
+    }
+    public RegexNode mark (Character o,Character d,Character a) {
+	return this.mark(o,d).tagMark(a);
+    }
+    public RegexNode mark (Character o,Character d,Character a,Character t) {
+	return this.mark(o,d,a).nodeMark(t);
+    }
     //
     //******************** C O D I N G ******************
     //
@@ -384,33 +481,37 @@ public final class RegexNode {
      * @param  code
      *         The String representation of the nodeTree.
      */
-    public void decode() {
-	Character o=':';
-	Character d=';';
-	Character a='¤';
+    public RegexNode decode() {
+	Character o=this._o;
+	Character d=this._d;
+	Character a=this._a;
+	Character t=this._t;
+	removeChildren();
+	decode_(getText(),-1,o,d,a,-1,t);
+	return this;
+    }
+    public RegexNode decode(Character o, Character d, Character a) {
+	this.mark(o,d,a);
 	Character t=null;
 	removeChildren();
 	decode_(getText(),-1,o,d,a,-1,t);
+	return this;
     }
-    public void decode(Character o, Character d, Character a) {
-	Character t=null;
-	removeChildren();
-	decode_(getText(),-1,o,d,a,-1,t);
-    }
-    public void decode(String code) {
-	Character o=':';
-	Character d=';';
-	Character a='¤';
-	Character t=null;
+    public RegexNode decode(String code) {
+	Character o=this._o;
+	Character d=this._d;
+	Character a=this._a;
+	Character t=this._t;
 	removeChildren();
 	decode_(code,-1,o,d,a,-1,t);
+	return this;
     }
     public Integer decode(String code,Integer pos) {
-	Character o=':';
-	Character d=';';
-	Character a='¤';
+	Character o=this._o;
+	Character d=this._d;
+	Character a=this._a;
 	Character t=null;
-	return decode_(code,-1,o,d,a,-1,t);
+	return decode_(code,pos,o,d,a,-1,t); // pos=-1???
     }
     private Integer decode_(String code,Integer pos, Character o, Character d, Character a, Integer cnt, Character t, RegexNode... nodes) {
 	int len=code.length();
@@ -477,9 +578,9 @@ public final class RegexNode {
      *         The String representation of the nodeTree.
      */
     public String encode() {
-	Character o=':';
-	Character d=';';
-	Character a='¤';
+	Character o=this._o;
+	Character d=this._d;
+	Character a=this._a;
 	setLabelAll(String.valueOf(a));
 	String s=encode_(o,a,d);
 	s=s+o+d+a;
@@ -826,6 +927,10 @@ public final class RegexNode {
       *
       * @Return The first node with the requested node name and location.
       */
+    public RegexNode getFirstNode() { // focus on next node (recursively)
+	String[] path=this._path;
+	return getFirstNode(path);
+    }
     public RegexNode getFirstNode(String[] name1, String... name2) { // focus on next node (recursively)
 	return getFirstNode(concat(name1,name2));
     }
@@ -833,6 +938,10 @@ public final class RegexNode {
 	RegexNode node = getNode(path);
 	getNodeReset(path);
 	return node;
+    }
+    public Integer getFirstLength() { // focus on next node (recursively)
+	String[] path=this._path;
+	return getFirstLength(path);
     }
     public Integer getFirstLength(String[] name1, String... name2) { // focus on next node (recursively)
 	return getFirstLength(concat(name1,name2));
@@ -854,20 +963,36 @@ public final class RegexNode {
       *
       * @return true if we found the pattern, otherwise false
       */
+    public boolean find() {
+	String pattern=this._pattern;
+	return find(pattern);
+	}
     public boolean find(String patternText) {
 	return seek_(replaceAnchorNames(patternText));
     }
     public void resetSeek() {
 	oldPatternString=null;
     }
+    public boolean seek() {
+	String pattern=this._pattern;
+	return seek(pattern);
+    }
     public boolean seek(String patternText) {
 	return seek_(replaceAnchorNames(patternText));
     }
-    
-    public boolean seek(String patternText, String[] name1, String... name2) {
-	return seek(patternText, concat(name1,name2));
+    public boolean seekAll() {
+	String pattern=this._pattern;
+	String[] path=this._path;
+	return seekAll(pattern,path);
     }
-    public boolean seek(String patternText, String... node) {
+    public boolean seekAll(String patternText) {
+	String[] path=this._path;
+	return seekAll(patternText, path);
+    }
+    public boolean seekAll(String patternText, String[] name1, String... name2) {
+	return seekAll(patternText, concat(name1,name2));
+    }
+    public boolean seekAll(String patternText, String... node) {
 	RegexNode target=lastSeek;
 	boolean bdone=false;
 	while (! bdone ) {
@@ -956,11 +1081,15 @@ public final class RegexNode {
 	return text;
     }
     // replace labels that are anchors with their names...
+    public boolean replaceLabelAnchorNames() { // hide current match 
+	String[] path=this._path;
+	return replaceLabelAnchorNames(path);
+    }
     public boolean replaceLabelAnchorNames(String[] name1, String... name2) { // hide current match 
 	return replaceLabelAnchorNames(concat(name1,name2));
     }
     public boolean replaceLabelAnchorNames(String... path) { // hide current match 
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return replaceLabelAnchorNames_(this,0,pattern,split);
@@ -1027,11 +1156,15 @@ public final class RegexNode {
 	}
 	return text;
     }
+    public boolean replaceLabelAnchors() { // hide current match 
+	String[] path=this._path;
+	return replaceLabelAnchors(path);
+    }
     public boolean replaceLabelAnchors(String[] name1, String... name2) { // hide current match 
 	return replaceLabelAnchors(concat(name1,name2));
     }
     public boolean replaceLabelAnchors(String... path) { // hide current match 
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return replaceLabelAnchors_(this,0,pattern,split);
@@ -1122,11 +1255,15 @@ public final class RegexNode {
       *        processed ("..." is one or more nodes, "*" is any node, 
       *        "$" indicates top of the node tree).
       */
+    public RegexNode getNode() { // focus on next node (recursively)
+	String[] path=this._path;
+	return getNode(path);
+    }
     public RegexNode getNode(String[] name1, String... name2) { // focus on next node (recursively)
 	return getNode(concat(name1,name2));
     }
     public RegexNode getNode(String... path) { // focus on next node (recursively)
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	return getNode(nodePatternText,split);
     }
@@ -1145,19 +1282,27 @@ public final class RegexNode {
       *        processed ("..." is one or more nodes, "*" is any node, 
       *        "$" indicates top of the node tree).
       */
+    public ArrayList<RegexNode> getNodeAll() { // focus on next node (recursively)
+	String[] path=this._path;
+	return getNodeAll(path);
+    }
     public ArrayList<RegexNode> getNodeAll(String[] name1, String... name2) { // focus on next node (recursively)
 	return getNodeAll(concat(name1,name2));
     }
     public ArrayList<RegexNode> getNodeAll(String... path) { // focus on next node (recursively)
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	return getNodeAll(0,nodePatternText,split);
+    }
+    public ArrayList<RegexNode> getNodeAll(int targetlevel) { // focus on next node (recursively)
+	String[] path=this._path;
+	return getNodeAll(targetlevel,path);
     }
     public ArrayList<RegexNode> getNodeAll(int targetlevel,String[] name1, String... name2) { // focus on next node (recursively)
 	return getNodeAll(targetlevel,concat(name1,name2));
     }
     public ArrayList<RegexNode> getNodeAll(int targetlevel, String... path) { // focus on next node (recursively)
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	return getNodeAll(targetlevel,nodePatternText,split);
     }
@@ -1244,7 +1389,7 @@ public final class RegexNode {
       *        "$" indicates top of the node tree).
       */
     public void getNodeReset(String... path) { // focus on next node (recursively)
-	Character split = '¤';
+	Character split = this._s;
 	String nodePatternText=getPatternText(path,split);
 	Integer sid=nodeSidMap.get(nodePatternText);
 	if (sid != null) {
@@ -1368,7 +1513,7 @@ public final class RegexNode {
 	return getParent(concat(name1,name2));
     }
     public RegexNode getParent(String... path) {
-	Character split = '¤';
+	Character split = this._s;
 	String nodePatternText=getPatternText(path,split);
 	RegexNode child=getNode(nodePatternText,split);
 	if (child != null) {
@@ -1388,6 +1533,10 @@ public final class RegexNode {
     }
     public int getParentEndIndex() {
 	return parentNodeEndIndex;
+    }
+    public int count(String match) { // focus on next node (recursively)
+	String[] path=this._path;
+	return count(match,path);
     }
     public int count(String match, String[] name1, String... name2) { // focus on next node (recursively)
 	return count(match,concat(name1,name2));
@@ -1430,7 +1579,7 @@ public final class RegexNode {
 	return rmNodeAll(label,concat(name1,name2));
     }
     public boolean rmNodeAll(String label,String... path) { // focus on next node (recursively)
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return rmNodeAll_(label,this,0,pattern,split);
@@ -1826,13 +1975,18 @@ public final class RegexNode {
       * @param node
       *        New node name.
       */
+    public RegexNode name(String node) {
+	setNodeName(node);
+	return this;
+    };
     public boolean setNodeName(String node) {
 	boolean ret=true;
 	if (node.equals(this.node)) {
 	    ret=false;
 	} else {
-	this.node=node;
+	    this.node=node;
 	};
+	this._node=node;
 	return ret;
     }
     /**
@@ -1850,11 +2004,20 @@ public final class RegexNode {
       *
       * @return returns true if at least one node was given new node name.
       */
+    public boolean setNodeNameAll() {
+	String newnode=this._node;
+	String[] path=this._path;
+	return setNodeNameAll(newnode, path);
+    }
+    public boolean setNodeNameAll(String newnode) {
+	String[] path=this._path;
+	return setNodeNameAll(newnode, path);
+    }
     public boolean setNodeNameAll(String newnode, String[] name1, String... name2) {
 	return setNodeNameAll(newnode, concat(name1,name2));
     }
     public boolean setNodeNameAll(String newnode, String... path) {
-	Character split = '¤';
+	Character split = this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNewPattern(nodePatternText);
 	return setNodeNameAll_(this, newnode, pattern, split);
@@ -1943,12 +2106,17 @@ public final class RegexNode {
       *        processed ("..." is one or more nodes, "*" is any node, 
       *        "$" indicates top of the node tree).
       */
+    public boolean setLabelAll() {
+	String label=this._label;
+	String[] path=this._path;
+	return setLabelAll(label, path);
+    }
     public boolean setLabelAll(String label, String[] name1, String... name2) {
 	return setLabelAll(label, concat(name1, name2));
     }
     public boolean setLabelAll(String label, String... path) {
 	label=replaceAnchorNames(label);
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return setLabelAll_(this,0,label,pattern,split);
@@ -1959,7 +2127,7 @@ public final class RegexNode {
     }
     public boolean setLabelAll(String label, int targetlevel, String... path) {
 	label=replaceAnchorNames(label);
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return setLabelAll_(this,targetlevel,label,pattern,split);
@@ -1969,7 +2137,7 @@ public final class RegexNode {
 	return setLabelAll(label, concat(name1, name2));
     }
     public boolean setLabelAll(Character label, String... path) {
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return setLabelAll_(this,0,label,pattern,split);
@@ -1979,7 +2147,7 @@ public final class RegexNode {
 	return setLabelAll(label, targetlevel, concat(name1, name2));
     }
     public boolean setLabelAll(Character label, int targetlevel, String... path) {
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return setLabelAll_(this,targetlevel,label,pattern,split);
@@ -2116,7 +2284,7 @@ public final class RegexNode {
 	return markLabelAll(startmark, endmark, targetlevel, concat(name1, name2));
     }
     public boolean markLabelAll(String startmark, String endmark, int targetlevel, String... path) {
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return markLabelAll_(startmark, endmark, targetlevel, this, pattern, split);
@@ -2144,7 +2312,7 @@ public final class RegexNode {
 	return markLabelAll(child, startmark, startmark, targetlevel, path);
     }
     public boolean markLabelAll(RegexNode child, String startmark, String endmark, int targetlevel, String... path) {
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return child.markLabel_(startmark, endmark, targetlevel, this, pattern, split);
@@ -2165,7 +2333,7 @@ public final class RegexNode {
 	return markLabelAll(nodeList, startmark, startmark, targetlevel, path);
     }
     public boolean markLabelAll(ArrayList<RegexNode>  nodeList, String startmark, String endmark, int targetlevel, String... path) {
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return markLabelAll_(nodeList, startmark, endmark, targetlevel, this, pattern, split);
@@ -2240,6 +2408,10 @@ public final class RegexNode {
       * @param replacementText
       *        The replacement rule following standard regex syntax ("$1" is group 1 etc.)
       */
+    public String translate() { // returns processed replacement for current match
+	String replacementText=this._replacement;
+	return translate(replacementText);
+    }
     public String translate(String replacementText) { // returns processed replacement for current match
 	replacementText=replaceAnchorNames(replacementText);
 	Plan plan=planReplacement(replacementText);
@@ -2252,6 +2424,15 @@ public final class RegexNode {
       * @param replacementText
       *        The replacement rule following standard regex syntax ("$1" is group 1 etc.)
       */
+    public Plan replace() { // replace current match with processed replacement
+	String replacementText=this._replacement;
+	int group=this._group;
+	return replace(replacementText, group);
+    }
+    public Plan replace(int group) { // replace current match with processed replacement
+	String replacementText=this._replacement;
+	return replace(replacementText, group);
+    }
     public Plan replace(String replacementText, int group) { // replace current match with processed replacement
 	replacementText=replaceAnchorNames(replacementText);
 	Plan plan=planReplacement(replacementText,group); // make replacement plan
@@ -2282,10 +2463,11 @@ public final class RegexNode {
       *        The replacement rule following standard regex syntax ("$1" is group 1 etc.)
       *        This is the text in the node, and this text will reappear if the node is unhidden.
       */
-    public boolean replaceAll(String patternText, String replacementText) { // replace current match with processed replacement
-	patternText=replaceAnchorNames(patternText);
-	//replacementText=replaceAnchorNames(replacementText);
-	return replaceAll_(this,patternText, replacementText, 0, allSubLevels,null,null); // replace current match with processed replacement
+    public boolean replaceAll() { // replace current match with processed replacement
+	String patternText=this._pattern;
+	String replacementText=this._replacement;
+	String[] path=this._path;
+	return replaceAll(patternText,replacementText,path);
     }
 
     /**
@@ -2305,13 +2487,17 @@ public final class RegexNode {
       *        processed ("..." is one or more nodes, "*" is any node, 
       *        "$" indicates top of the node tree).
       */
+    public boolean replaceAll(String patternText, String replacementText) { // replace current match with processed replacement
+	String[] path=this._path;
+	return replaceAll(patternText, replacementText, path);
+    }
     public boolean replaceAll(String patternText, String replacementText, String[] name1, String... name2) { // replace current match with processed replacement
 	return replaceAll(patternText,replacementText,concat(name1,name2));
     }
     public boolean replaceAll(String patternText, String replacementText, String... path) { // replace current match with processed replacement
 	patternText=replaceAnchorNames(patternText);
 	//replacementText=replaceAnchorNames(replacementText);
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return replaceAll_(this,patternText, replacementText, 0, allSubLevels,pattern,split); // replace current match with processed replacement
@@ -2342,16 +2528,27 @@ public final class RegexNode {
       *        processed ("..." is one or more nodes, "*" is any node, 
       *        "$" indicates top of the node tree).
       */
-    public boolean replaceAll(String patternText, String replacementText, int group, int subLevel, String[] name1, String... name2) { // replace current match with processed replacement
+    public boolean replaceAll(int group, int subLevel) { // replace current match with processed replacement
+	String patternText=this._pattern;
+	String replacementText=this._replacement;
+	String[] path=this._path;
+	return replaceAll(patternText,replacementText,group,subLevel,path);
+    }
+    public boolean replaceAll(int group, int subLevel, String[] name1, String... name2) { // replace current match with processed replacement
+	String patternText=this._pattern;
+	String replacementText=this._replacement;
 	return replaceAll(patternText,replacementText, group, subLevel, concat(name1,name2));
     }
     public boolean replaceAll(String patternText, String replacementText, int subLevel, String... path) { // replace current match with processed replacement
 	return replaceAll(patternText,replacementText, 0, subLevel, path);
     }
+    public boolean replaceAll(String patternText, String replacementText, int group, int subLevel, String[] name1, String... name2) { // replace current match with processed replacement
+	return replaceAll(patternText,replacementText, group, subLevel, concat(name1,name2));
+    }
     public boolean replaceAll(String patternText, String replacementText, int group, int subLevel, String... path) { // replace current match with processed replacement
 	patternText=replaceAnchorNames(patternText);
 	//replacementText=replaceAnchorNames(replacementText);
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return replaceAll_(this,patternText, replacementText, group, subLevel, pattern, split); // replace current match with processed replacement
@@ -2448,10 +2645,14 @@ public final class RegexNode {
       *        Name of node name given to the hidden text.
       *         
       */
-    public void hideTheRest(String node) { // hide regions that are unnodeged
-	hideTheRest(node,"");
+    public RegexNode hideTheRest() { // hide regions that are unnodeged
+	hideTheRest(this._node,this._label);
+	return this;
     }
-
+    public RegexNode hideTheRest(String node) { // hide regions that are unnodeged
+	hideTheRest(node,this._label);
+	return this;
+    }
     /**
       * Hides text that has not been nodeged so far, and replaces it with a label.
       *
@@ -2481,11 +2682,31 @@ public final class RegexNode {
 	}
 	return hit;
     }
+    public boolean hideTheRestAll() {
+	String node=this._node;
+	String label=this._label;
+	String[] path=this._path;
+	return hideTheRestAll(node,label,path);
+    }
+    public boolean hideTheRestAll(String node) {
+	String label=this._label;
+	String[] path=this._path;
+	return hideTheRestAll(node,label,path);
+    }
+    public boolean hideTheRestAll(String node,String label) {
+	String[] path=this._path;
+	return hideTheRestAll(node,label,path);
+    }
+    public boolean hideTheRestAll(String[] path) {
+	String node=this._node;
+	String label=this._label;
+	return hideTheRestAll(node,label,path);
+    }
     public boolean hideTheRestAll(String node, String label, String[] name1, String... name2) {
 	return hideTheRestAll(node, label, concat(name1,name2));
     }
     public boolean hideTheRestAll(String node, String label, String... path) {
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return  hideTheRestAll_(this,node, label, pattern,split);
@@ -2504,6 +2725,21 @@ public final class RegexNode {
       *        processed ("..." is one or more nodes, "*" is any node, 
       *        "$" indicates top of the node tree).
       */
+    public boolean hideNode() {
+	String newNode=this._node;
+	String label=this._label;
+	String[] path=this._path;
+	return hideNode(newNode, label, path);
+    }
+    public boolean hideNode(String newNode) {
+	String label=this._label;
+	String[] path=this._path;
+	return hideNode(newNode, label, path);
+    }
+    public boolean hideNode(String newNode,String label) {
+	String[] path=this._path;
+	return hideNode(newNode, label, path);
+    }
     public boolean hideNode(String newNode, String label, String[] name1, String... name2) {
 	return hideNode(newNode, label, concat(name1,name2));
     }
@@ -2511,7 +2747,7 @@ public final class RegexNode {
 	label=replaceAnchorNames(label);
 	boolean found=false;
 	Integer sid=maxsid++;
-	Character split = '¤';
+	Character split = this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNewPattern(nodePatternText);
 	RegexNode nodeNode=getNode_(this,sid,pattern,split);
@@ -2539,6 +2775,43 @@ public final class RegexNode {
       *        processed ("..." is one or more nodes, "*" is any node, 
       *        "$" indicates top of the node tree).
       */
+    public boolean hideNodeGroup() {
+	String groupNode=this._node;
+	String label=this._label;
+	int group=this._group;
+	String[] path=this._path;
+	return hideNodeGroup(groupNode, label, group, path);
+    };
+    public boolean hideNodeGroup(String groupNode) {
+	String label=this._label;
+	int group=this._group;
+	String[] path=this._path;
+	return hideNodeGroup(groupNode, label, group, path);
+    }
+    public boolean hideNodeGroup(int group) {
+	String groupNode=this._node;
+	String label=this._label;
+	String[] path=this._path;
+	return hideNodeGroup(groupNode, label, group, path);
+    };
+    public boolean hideNodeGroup(String groupNode, int group) {
+	String label=this._label;
+	String[] path=this._path;
+	return hideNodeGroup(groupNode, label, group, path);
+    }
+    public boolean hideNodeGroup(String groupNode, String label, int group) {
+	String[] path=this._path;
+	return hideNodeGroup(groupNode, label, group, path);
+    }
+    public boolean hideNodeGroup(int group, String[] name1,String... name2) {
+	String groupNode=this._node;
+	String label=this._label;
+	return hideNodeGroup(groupNode, label, group, concat(name1,name2));
+    }
+    public boolean hideNodeGroup(String groupNode, int group, String[] name1,String... name2) {
+	String label=this._label;
+	return hideNodeGroup(groupNode, label, group, concat(name1,name2));
+    }
     public boolean hideNodeGroup(String groupNode, String label, int group, String[] name1,String... name2) {
 	return hideNodeGroup(groupNode, label, group, concat(name1,name2));
     }
@@ -2546,7 +2819,7 @@ public final class RegexNode {
 	label=replaceAnchorNames(label);
 	boolean found=false;
 	Integer sid=maxsid++;
-	Character split = '¤';
+	Character split = this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNewPattern(nodePatternText);
 	RegexNode nodeNode=getNode_(this,sid,pattern,split);
@@ -2560,11 +2833,26 @@ public final class RegexNode {
     }
     // make parent
     // returns parent
+    public boolean makeParentAll() {
+	String node=this._node;
+	String label=this._label;
+	String[] path=this._path;
+	return makeParentAll(node, label, path);
+    }
+    public boolean makeParentAll(String node) {
+	String label=this._label;
+	String[] path=this._path;
+	return makeParentAll(node, label, path);
+    }
+    public boolean makeParentAll(String node,String label) {
+	String[] path=this._path;
+	return makeParentAll(node, label, path);
+    }
     public boolean makeParentAll(String node, String label, String[] name1, String... name2) {
 	return makeParentAll(node, label, concat(name1, name2));
     }
     public boolean makeParentAll(String node, String label, String... path) {
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return makeParentAll_(node, label, this, 0, pattern, split);
@@ -2617,6 +2905,15 @@ public final class RegexNode {
 	}
 	return hit;
     }
+    public RegexNode makeParent() {
+	String node=this._node;
+	String label=this._label;
+	return makeParent(node,label);
+    }
+    public RegexNode makeParent(String node) {
+	String label=this._label;
+	return makeParent(node,label);
+    }
     public RegexNode makeParent(String node,String label) {
 	if (parentNode != null) {
 	    String lab=this.getLabel();
@@ -2637,8 +2934,21 @@ public final class RegexNode {
       * @param node
       *        The name of the node given to the hidden text.
       */
+    public RegexNode hide() {
+	String node=this._node;
+	String label=this._label;
+	int group=this._group;
+	return hide_(node,label,group);
+    }
+    public RegexNode hide(int group) {
+	String node=this._node;
+	String label=this._label;
+	return hide_(node,label,group);
+    }
     public RegexNode hide(String node) {
-	return hide_(node,"",0);
+	String label=this._label;
+	int group=this._group;
+	return hide_(node,label,group);
     }
     /**
       * Hides the current match giving it a node. 
@@ -2651,7 +2961,8 @@ public final class RegexNode {
       *        The group that should be hidden (0=entire match).
       */
     public void hide(String node, int group) {
-	hide_(node,"",group);
+	String label=this._label;
+	hide_(node,label,group);
     }
 
     /**
@@ -2665,8 +2976,9 @@ public final class RegexNode {
       *        label to replace the hidden text in the search text.
       */
     public RegexNode hide(String node, String label) { // hide current match 
+	int group=this._group;
 	label=replaceAnchorNames(label);
-	return hide_(node,label,0);
+	return hide_(node,label,group);
     }
     
     /**
@@ -2721,15 +3033,57 @@ public final class RegexNode {
       *        processed ("..." is one or more nodes, "*" is any node, 
       *        "$" indicates top of the node tree).
       */
-    public boolean hideAll(String node, String patternText, String label, 
+    public RegexNode hideAll() { // hide current match 
+	String node=this._node;
+	String patternText=this._pattern;
+	String label=this._label;
+	String[] path=this._path;
+	return hideAll(node, patternText, label, path);
+    };
+    public RegexNode hideAll(String patternText) { // hide current match 
+	String node=this._node;
+	String label=this._label;
+	String[] path=this._path;
+	return hideAll(node, patternText, label, path);
+    };
+    public RegexNode hideAll(String node,String patternText) { // hide current match 
+	String label=this._label;
+	String[] path=this._path;
+	return hideAll(node, patternText, label, path);
+    };
+    public RegexNode hideAll(String node,String patternText,String label) { // hide current match 
+	String[] path=this._path;
+	return hideAll(node, patternText, label, path);
+    };
+    public RegexNode hideAll(String node, String patternText, String label, 
+			   String... path) { // hide current match 
+	hideLoop(node,patternText,label,path);
+	return this;
+    };
+    public boolean hideLoop(String patternText) { // hide current match 
+	String node=this._node;
+	String label=this._label;
+	String[] path=this._path;
+	return hideLoop(node, patternText, label, path);
+    };
+    public boolean hideLoop(String node, String patternText) { // hide current match 
+	String label=this._label;
+	String[] path=this._path;
+	return hideLoop(node, patternText, label, path);
+    };
+    public boolean hideLoop(String node, String patternText, String label) { // hide current match 
+	String[] path=this._path;
+	return hideLoop(node, patternText, label, path);
+    };
+    public boolean hideLoop(String node, String patternText, String label, 
 			   String[] name1, String... name2) { // hide current match 
-	return hideAll(node, patternText, label, concat(name1,name2));
-    }
-    public boolean hideAll(String node, String patternText, String label, 
+	return hideLoop(node, patternText, label, concat(name1,name2));
+    };
+    public boolean hideLoop(String node, String patternText, String label, 
 			   String... path) { // hide current match 
 	patternText=replaceAnchorNames(patternText);
 	label=replaceAnchorNames(label);
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return hideAll_(this,0,node,patternText,label,pattern,split);
@@ -2747,20 +3101,18 @@ public final class RegexNode {
       *        "$" indicates top of the node tree).
      * 
      */
+    public RegexNode unhide() {
+	String[] path=this._path;
+	return unhide(path);
+    }
     public RegexNode unhide(String[] name1, String... name2) {
 	return unhide(concat(name1,name2));
     }
     public RegexNode unhide(String... path) {
-	Character split = '¤';
+	Character split = this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNewPattern(nodePatternText);
 	return unhide_(this,pattern,split);
-    }
-    /**
-     * Unhides children of the calling node with the specified node.
-     */
-    public boolean unhideAll() {
-	return unhideAll_(this,0,null,null);
     }
     /**
      * Unhides all occurences of specified node.
@@ -2772,11 +3124,15 @@ public final class RegexNode {
       *        processed ("..." is one or more nodes, "*" is any node, 
       *        "$" indicates top of the node tree).
      */
+    public boolean unhideAll() {
+	String[] path=this._path;
+	return  unhideAll(path);
+    }
     public boolean unhideAll(String[] name1, String... name2) {
 	return  unhideAll(concat(name1,name2));
     }
     public boolean unhideAll(String... path) {
-	Character split = '¤';
+	Character split = this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNewPattern(nodePatternText);
 	return unhideAll_(this,0,pattern,split);
@@ -2794,11 +3150,15 @@ public final class RegexNode {
       *        processed ("..." is one or more nodes, "*" is any node, 
       *        "$" indicates top of the node tree).
      */
+    public boolean unhideAll(Integer level) {
+	String[] path=this._path;
+	return  unhideAll(level,path);
+    }
     public boolean unhideAll(Integer level, String[] name1, String... name2) {
 	return  unhideAll(level,concat(name1,name2));
     }
     public boolean unhideAll(Integer level, String... path) {
-	Character split = '¤';
+	Character split = this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNewPattern(nodePatternText);
 	return unhideAll_(this,level,pattern,split);
@@ -2812,18 +3172,26 @@ public final class RegexNode {
 	elabel=replaceAnchorNames(elabel);
 	unfold_(slabel,elabel);
     }
+    public boolean unfoldAll(String slabel,String elabel) {
+	String[] path=this._path;
+	return unfoldAll(slabel,elabel,path);
+    }
     public boolean unfoldAll(String slabel,String elabel,String... path) {
 	slabel=replaceAnchorNames(slabel);
 	elabel=replaceAnchorNames(elabel);
-	Character split = '¤';
+	Character split = this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNewPattern(nodePatternText);
 	return unfoldAll_(slabel,elabel,0,this,pattern,split);
     }
+    public boolean unfoldParentAll(String slabel,String elabel) {
+	String[] path=this._path;
+	return unfoldParentAll(slabel,elabel,path);
+    };
     public boolean unfoldParentAll(String slabel,String elabel,String... path) {
 	slabel=replaceAnchorNames(slabel);
 	elabel=replaceAnchorNames(elabel);
-	Character split = '¤';
+	Character split = this._s;
 	String nodePatternText=getPatternText(path,split);
 	if (debug) System.out.format("Pattern: \"%s\"\n",nodePatternText);
 	Pattern pattern=getNewPattern(nodePatternText);
@@ -2835,7 +3203,7 @@ public final class RegexNode {
     public boolean unfoldParentAll(ArrayList<RegexNode>  nodeList, String slabel, String elabel, String... path) {
 	slabel=replaceAnchorNames(slabel);
 	elabel=replaceAnchorNames(elabel);
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return unfoldParentAll_(nodeList, slabel, elabel, this, pattern, split);
@@ -2851,13 +3219,17 @@ public final class RegexNode {
 	}
 	return hit;
     }
+    public boolean unfoldParentAll(RegexNode  cNode, String slabel, String elabel) {
+	String[] path=this._path;
+	return unfoldParentAll(cNode,slabel,elabel,path);
+    }
     public boolean unfoldParentAll(RegexNode  cNode, String slabel, String elabel, String[] name1, String... name2) {
 	return unfoldParentAll(cNode, slabel, elabel, concat(name1, name2));
     }
     public boolean unfoldParentAll(RegexNode  cNode, String slabel, String elabel, String... path) {
 	slabel=replaceAnchorNames(slabel);
 	elabel=replaceAnchorNames(elabel);
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return unfoldParentAll_(cNode, slabel, elabel, this, pattern, split);
@@ -2870,16 +3242,24 @@ public final class RegexNode {
 	}
 	return hit;
     }
+    public boolean unfoldParent(RegexNode child, String slabel, String elabel) {
+	String[] path=this._path;
+	return unfoldParent(child,slabel,elabel,path);
+    }
     public boolean unfoldParent(RegexNode child, String slabel, String elabel, String... path) {
 	return unfoldParent(child, slabel, elabel, -1, path);
     }
     public boolean unfoldParent(RegexNode child, String slabel, String elabel, int targetlevel, String... path) {
 	slabel=replaceAnchorNames(slabel);
 	elabel=replaceAnchorNames(elabel);
-	Character split = '¤';
+	Character split = this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNewPattern(nodePatternText);
 	return child.unfoldParent_(slabel, elabel, targetlevel, this, pattern, split);
+    }
+    public void fold() { // fold this node 
+	String label=this._label;
+	fold(label);
     }
     public void fold(String label) { // fold this node 
 	if (label != null) label=replaceAnchorNames(label);
@@ -2890,7 +3270,7 @@ public final class RegexNode {
     }
     public boolean foldAll(String label,String... path) {
 	label=replaceAnchorNames(label);
-	Character split = '¤';
+	Character split = this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNewPattern(nodePatternText);
 	return foldAll_(label,this,pattern,split);
@@ -2901,7 +3281,7 @@ public final class RegexNode {
     public boolean setLabelUnPaired(String slabel, String elabel, String... path) {
 	slabel=replaceAnchorNames(slabel);
 	elabel=replaceAnchorNames(elabel);
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return setLabelUnPaired_(slabel,elabel,this,0,pattern,split);
@@ -2913,7 +3293,7 @@ public final class RegexNode {
     public boolean setLabelUnPaired(String slabel, String elabel, int targetlevel, String... path) {
 	slabel=replaceAnchorNames(slabel);
 	elabel=replaceAnchorNames(elabel);
-	Character split='¤';
+	Character split=this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNodePattern(nodePatternText);
 	return setLabelUnPaired_(slabel,elabel,this,targetlevel,pattern,split);
@@ -2938,14 +3318,19 @@ public final class RegexNode {
     }
     public boolean foldPaired(String label,String... path) {
 	label=replaceAnchorNames(label);
-	Character split = '¤';
+	Character split = this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNewPattern(nodePatternText);
 	return foldPaired_(label,this,pattern,split);
     }
+    public RegexNode addUnFolded(RegexNode startNode, RegexNode endNode) {
+	String nodeName=this._node;
+	String startLabel=this._label;
+	return addUnFolded(nodeName,startLabel,startLabel,startLabel,startNode,endNode);
+    };
     public RegexNode addUnFolded(String nodeName, String startLabel,
 			       RegexNode startNode, RegexNode endNode) {
-	return addUnFolded(nodeName, startLabel, startLabel, startLabel,startNode, endNode);
+	return addUnFolded(nodeName,startLabel,startLabel,startLabel,startNode,endNode);
     }
     public RegexNode addUnFolded(String nodeName, String startLabel, String endLabel,
 			       RegexNode startNode, RegexNode endNode) {
@@ -2993,31 +3378,6 @@ public final class RegexNode {
     }
 
     /**
-      * "Ignores" all child nodes at and below envoking node.
-      * Note that the Root node is never "ignored".
-      * "Ignored" nodes are ignored by {@link #unhide} etc.
-      */
-    public void ignoreAll() { // ignored nodes are not "un-hidden" by "unhide"
-	if (parentNode != null) ignore(); // do not ignore root node
-	RegexNode child=firstChild.nextSibling;
-	while(child != lastChild) {
-	    child.ignoreAll();
-	    child=child.nextSibling;    // point to next valid element in chain
-	}
-    }
-    /**
-      * "Un-ignores" all nodes recursively so that they are not ignored by {@link #unhide} etc.
-      */
-    public void unignoreAll() {
-	unignore();
-	RegexNode child=firstChild.nextSibling;
-	while(child != lastChild) {
-	    child.unignoreAll();
-	    child=child.nextSibling;    // point to next valid element in chain
-	}
-    }
-
-    /**
      * "ignores"/"unignores" all nodes with specified node name recursively so that they are ignored/processed by {@link #unhide} etc.
       * Note that the Root node is never "ignored".
      * 
@@ -3028,20 +3388,37 @@ public final class RegexNode {
      *        true if node should be ignored, false if it should be unignored
      */
     /**
+
+
+    /**
+      * "Ignores" all child nodes at and below envoking node.
+      * Note that the Root node is never "ignored".
+      * "Ignored" nodes are ignored by {@link #unhide} etc.
+      */
+    public RegexNode ignoreAll() { // ignored nodes are not "un-hidden" by "unhide"
+	if (parentNode != null) ignore(); // do not ignore root node
+	RegexNode child=firstChild.nextSibling;
+	while(child != lastChild) {
+	    child.ignoreAll();
+	    child=child.nextSibling;    // point to next valid element in chain
+	}
+	return this;
+    }
+    /*
      * "Ignores" all nodes with specified node name recursively so that they are ignored by {@link #unhide} etc.
       * Note that the Root node is never "ignored".
      * 
      * @param node
      *        node name of the nodes that should be ignored.
      */
-    public void ignoreAll(String[] name1, String... name2) { // ignored nodes are not "un-hidden" by "unhide"
-	ignoreAll(concat(name1,name2));
+    public RegexNode ignoreAll(String[] name1, String... name2) { // ignored nodes are not "un-hidden" by "unhide"
+	return ignoreAll(concat(name1,name2));
     }
-    public void ignoreAll(String... path) { // ignored nodes are not "un-hidden" by "unhide"
-	Character split = '¤';
+    public RegexNode ignoreAll(String... path) { // ignored nodes are not "un-hidden" by "unhide"
+	Character split = this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNewPattern(nodePatternText);
-	ignoreAll_(this,pattern,split);
+	return ignoreAll_(this,pattern,split);
     }
     /**
       * "un-ignores" a node.
@@ -3057,14 +3434,25 @@ public final class RegexNode {
       * @param node
       *        node name of the nodes that should be ignored.
       */
-    public void unignoreAll(String[] name1,String... name2) {
-	unignoreAll(concat(name1,name2));
+    public RegexNode unignoreAll() {
+	String[] path = this._path;
+	return unignoreAll(path);
+	//unignore();
+	//RegexNode child=firstChild.nextSibling;
+	//while(child != lastChild) {
+	 //   child.unignoreAll();
+	 //   child=child.nextSibling;    // point to next valid element in chain
+	//}
+	//return this;
     }
-    public void unignoreAll(String... path) {
-	Character split = '¤';
+    public RegexNode unignoreAll(String[] name1,String... name2) {
+	return unignoreAll(concat(name1,name2));
+    }
+    public RegexNode unignoreAll(String... path) {
+	Character split = this._s;
 	String nodePatternText=getPatternText(path,split);
 	Pattern pattern=getNewPattern(nodePatternText);
-	unignoreAll_(this,pattern,split);
+	return unignoreAll_(this,pattern,split);
     }
     /**
       * Retrieves ignore-flag for specified node.
@@ -3180,6 +3568,10 @@ public final class RegexNode {
     public boolean hasChildren() {
 	return (firstChild.nextSibling != lastChild);
     }
+    public boolean hasStructure() {
+	String[] path=this._path;
+	return hasStructure(path);
+    };
     public boolean hasStructure(String... path) {
 	boolean ret=true;
 	int pos=0;
@@ -3223,6 +3615,19 @@ public final class RegexNode {
      */
     public void setAttribute(String attName, Object attObject) {
 	attributes.put(attName,attObject);
+    }
+    public int setAttributeAll(Object attObject) {
+	String attName=this._att;
+	String[] path = this._path;
+	return setAttributeAll(attName,attObject,path);
+    }
+    public int setAttributeAll(String attName, Object attObject) {
+	String[] path = this._path;
+	return setAttributeAll(attName,attObject,path);
+    }
+    public int setAttributeAll(Object attObject, String... path) {
+	String attName=this._att;
+	return setAttributeAll(attName,attObject,path);
     }
     public int setAttributeAll(String attName, Object attObject, String... path) {
 	int cnt=0;
@@ -3268,6 +3673,15 @@ public final class RegexNode {
     public Object removeAttribute(String attName) {
 	return attributes.remove(attName);
     }
+    public int removeAttributeAll() {
+	String attName=this._att;
+	String[] path=this._path;
+	return removeAttributeAll(attName,path);
+    }
+    public int removeAttributeAll(String attName) {
+	String[] path=this._path;
+	return removeAttributeAll(attName,path);
+    }
     public int removeAttributeAll(String attName, String... path) {
 	int cnt=0;
 	if (path.length!=0) {
@@ -3307,6 +3721,15 @@ public final class RegexNode {
      *
      * @return The attribute object.
      */
+    public Object getAttribute() { // focus on next node (recursively)
+	String attName=this._att;
+	String[] path=this._path;
+	return getAttribute(attName,path);
+    }
+    public Object getAttribute(String attName) { // focus on next node (recursively)
+	String[] path=this._path;
+	return getAttribute(attName,path);
+    }
     public Object getAttribute(String attName, String[] name1, String... name2) { // focus on next node (recursively)
 	return getAttribute(attName,concat(name1,name2));
     }
@@ -3331,6 +3754,10 @@ public final class RegexNode {
      *        (i.e. node[0]) and ending with the node that will be processed.
      *         
      */
+    public HashMap<String,ArrayList<RegexNode>> makeMap() { // focus on next node (recursively)
+	String[] path=this._path;
+	return makeMap((HashMap<String,ArrayList<RegexNode>> ) null,path);
+    }
     public HashMap<String,ArrayList<RegexNode>> makeMap(String[] name1, String... name2) { // focus on next node (recursively)
 	return makeMap((HashMap<String,ArrayList<RegexNode>> ) null,concat(name1,name2));
     }
@@ -3366,6 +3793,10 @@ public final class RegexNode {
      *        (i.e. node[0]) and ending with the node that will be processed.
      *         
      */
+    public ArrayList<RegexNode> makeList() {
+	String[] path=this._path;
+	return makeList(path);
+    }
     public ArrayList<RegexNode> makeList(String[] name1, String... name2) {
 	return makeList(concat(name1,name2));
     }
@@ -3522,7 +3953,7 @@ public final class RegexNode {
      *         
      */
     private RegexNode getNode_(RegexNode root,Integer sid,String[] path) { // focus on next node
-	Character split = '¤';
+	Character split = this._s;
 	String nodePatternText=getPatternText(path,split);
 	return getNode_(root,sid,getNewPattern(nodePatternText),split);
     }
@@ -3609,9 +4040,9 @@ public final class RegexNode {
 	}
 	if (debug) {
 	    if (level != null) {
-		System.out.format("   LEVELS=%d\n",level);
+		System.out.format("   +++ LEVELS=%d\n",level);
 	    } else {
-		System.out.format("\n");
+		System.out.format("   ---\n");
 	    }
 	}
 	return level;
@@ -3636,7 +4067,7 @@ public final class RegexNode {
     }
 
     private Integer nodeMatchOld2(RegexNode root, String[] path) {
-	Character split = '¤';
+	Character split = this._s;
 	String nodePatternText=getPatternText(path,split);
 	return nodeMatch(root,getNewPattern(nodePatternText),split);
     }
@@ -4521,6 +4952,25 @@ public final class RegexNode {
       * @param group
       *        only copy specified group data (0=all).
       */
+    private void deleteMatchRange(int group) {
+	int startIndex=matchStartIndexOriginal.get(group);
+	int endIndex=matchEndIndexOriginal.get(group);
+	deleteMatchRange(startIndex,endIndex);
+    };
+    private void deleteMatchRange(int startIndex, int endIndex) {
+	//if (debug) 
+	System.out.format("Deleting range: %s %d->%d\n",getIdentification(),startIndex,endIndex);
+	for (Integer ii=0;ii<=nMatchGroups;ii++) {
+	    if (startIndex <= matchStartIndexShifted.get(ii) &&
+		endIndex >= matchEndIndexShifted.get(ii)) {
+		deleteMatch(ii);
+	    };
+	};
+    };
+    private void deleteMatch(int group) {
+	matchStartIndexShifted.put(group,null);
+	matchEndIndexShifted.put(group,null);
+    };
     private void copyParentMatch(int group) {
 	copyParentMatch(group, parentNode.start(group), parentNode.end(group));
     }
@@ -4591,7 +5041,7 @@ public final class RegexNode {
 	return ignore;
     }
     
-    private void ignoreAll_(RegexNode root, Pattern pattern,Character split) { // ignored nodes are not "un-hidden" by "unhide"
+    private RegexNode ignoreAll_(RegexNode root, Pattern pattern,Character split) { // ignored nodes are not "un-hidden" by "unhide"
 	RegexNode child=firstChild.nextSibling;
 	while(child != lastChild) {
 	    child.ignoreAll_(root,pattern,split);
@@ -4600,9 +5050,10 @@ public final class RegexNode {
 	if (parentNode != null & nodeMatch(root,pattern,split) != null) {
 	    ignore();
 	}
+	return this;
     }
 	
-    public void unignoreAll_(RegexNode root, Pattern pattern, Character split) {
+    private RegexNode unignoreAll_(RegexNode root, Pattern pattern, Character split) {
 	RegexNode child=firstChild.nextSibling;
 	while(child != lastChild) {
 	    child.unignoreAll_(root,pattern,split);
@@ -4611,6 +5062,7 @@ public final class RegexNode {
 	if (nodeMatch(root,pattern,split) != null)  {
 	    unignore();
 	}
+	return this;
     }
 
     /**

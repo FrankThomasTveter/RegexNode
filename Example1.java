@@ -22,26 +22,27 @@ public class Example1 {
 	
 	// initialise
 	RegexNode regex=new RegexNode("foo foo foo <comment with foo> foo foo <more comments with foo>");
-	regex.setNodeName("Groot"); // set the name of the root-node
+	regex.node("Groot").path("*"); // set the name of the root-node
 	System.out.format("Initial text:'%s'\n\n", regex.getText());
 
 	// define non-ASCII label character (not originally in the text)
 	RegexNode.define("<Comment>");
 
 	// hide comments in "comment"-node with non-ASCII label "<Comment>" in the "Groot" node
-	regex.hideAll( "comment", "<.*?>", "<Comment>","*"); // non-gready search
+	//regex.hideAll( "comment", "<.*?>", "<Comment>","*"); // non-gready search
+	regex.node("comment").label("<Comment>").hideAll("<.*?>"); // non-gready search
 	regex.ignoreAll("comment"); // do not process "comment"-nodes later on
 	System.out.format("Tree with comments hidden:%s\n", regex.toString());
 
 	// change "foo" to "bar"
-	regex.replaceAll("foo","bar","*"); // replace all "foo" by "bar" in all (not-ignored) nodes
+	regex.replaceAll("foo","bar"); // replace all "foo" by "bar" in all (not-ignored) nodes
 
 	// replace "foo" by "tar" in the comments
-	regex.unignoreAll(); // do not ignore any nodes any more
-	regex.replaceAll("foo","tar","comment"); // replace "foo" by "tar" in all "comment"-nodes
+	regex.unignoreAll("*"); // do not ignore any nodes any more
+	regex.path("comment").replaceAll("foo","tar"); // replace "foo" by "tar" in all "comment"-nodes
 
 	// retrieve the final text
-	regex.unhideAll(); // un-hide all nodes
+	regex.path("*").unhideAll(); // un-hide all nodes
 	System.out.format("Final text:'%s'\n", regex.getText());
     }
 }
