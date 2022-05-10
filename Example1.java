@@ -36,6 +36,7 @@ public class Example1 {
 
 	// change "foo" to "bar"
 	regex.replaceAll("foo","bar"); // replace all "foo" by "bar" in all (not-ignored) nodes
+	System.out.format("Current Text:'%s'\n", regex.getTextAll());
 
 	// replace "foo" by "tar" in the comments
 	regex.unignoreAll("*"); // do not ignore any nodes any more
@@ -43,7 +44,7 @@ public class Example1 {
 
 	// retrieve the final text
 	regex.path("*").unhideAll(); // un-hide all nodes
-	System.out.format("Final text:'%s'\n", regex.getText());
+	System.out.format("Final text:  '%s'\n", regex.getText());
     }
 }
 
