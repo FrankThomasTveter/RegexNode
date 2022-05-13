@@ -21,7 +21,8 @@ For example, the _regex_ "abc" gives exactly one match in the _string_
        "abc efg stu xyz"
 
 A _regex_ may contain special sequences like `\s` for white space and `\w` for word characters.
-A more advanced _regex_ with special sequences could be `\s\w{3}\s` which would only match ` efg ` and ` stu `
+A more advanced _regex_ with special sequences could be `\s\w{3}\s` which matches three word 
+characters with both a leading and a trailing white space. This pattern will only match ` efg ` and ` stu `
 in the above string, as `abc` and `xyz` are missing a leading or trailing white space.
 
 Patterns can further be combined into more complicated patterns, for instance 
