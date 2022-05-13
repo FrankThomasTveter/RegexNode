@@ -98,7 +98,461 @@ Finally use `unhideAll()` to retrieve the resulting string, for instance
 
 gives the result `Hello WXrld` as expected.
 
+## Example 1
+This example demonstrates use of "hideAll", "ignoreAll" and "replaceAll".
 
+    public class Example1 {
+     public static void main(String[] args) {
+
+        // RegexNode example by Frank Thomas Tveter 2016.
+        // This example demonstrates use of "hideAll", "ignoreAll" and "replaceAll".
+        
+        // initialise
+        RegexNode regex=new RegexNode("foo foo foo <comment with foo> foo foo <more comments with foo>");
+        regex.node("Groot").path("*"); // set the name of the root-node
+        System.out.format("Initial text:'%s'\n\n", regex.getText());
+
+        // define non-ASCII label character (not originally in the text)
+        RegexNode.define("<Comment>");
+
+        // hide comments in "comment"-node with non-ASCII label "<Comment>" in the "Groot" node
+        //regex.hideAll( "comment", "<.*?>", "<Comment>","*"); // non-gready search
+        regex.node("comment").label("<Comment>").hideAll("<.*?>"); // non-gready search
+        regex.ignoreAll("comment"); // do not process "comment"-nodes later on
+        System.out.format("Tree with comments hidden:%s\n", regex.toString());
+
+        // change "foo" to "bar"
+        regex.replaceAll("foo","bar"); // replace all "foo" by "bar" in all (not-ignored) nodes
+        System.out.format("Current Text:'%s'\n", regex.getTextAll());
+
+        // replace "foo" by "tar" in the comments
+        regex.unignoreAll("*"); // do not ignore any nodes any more
+        regex.path("comment").replaceAll("foo","tar"); // replace "foo" by "tar" in all "comment"-nodes
+
+        // retrieve the final text
+        regex.path("*").unhideAll(); // un-hide all nodes
+        System.out.format("Final text:  '%s'\n", regex.getText());
+     }
+    }
+
+The program gives the following output.
+
+    Initial text:'foo foo foo <comment with foo> foo foo <more comments with foo>'
+
+    Tree with comments hidden:
+    0#Groot# "foo foo foo [§] foo foo [§]" Root [0] no groups       
+                       1 1         2 2
+      1#comment# "<comment with foo>" => 0#(12 13) #i <-99 1 2> no groups         
+                                 
+      2#comment# "<more comments with foo>" => 0#(22 23) #i <1 2 -99> no groups         
+                                      
+    #### Total number of nodes defined = 2.
+
+    Final text:'bar bar bar <comment with tar> bar bar <more comments with tar>'
+
+## Example 2
+ This example demonstrates how to use "getNode" to loop through nodes.
+
+    public class Example2 {
+     public static void main(String[] args) {
+
+        // RegexNode example by Frank Thomas Tveter 2016.
+        // This example demonstrates how to use "getNode" to loop through nodes.
+        
+        // initialise
+        RegexNode regex=new RegexNode("foo foo foo <comment with foo> foo foo <more comments with foo>");
+        regex.setNodeName("Groot");
+        System.out.format("Initial text:'%s'\n\n", regex.getText());
+
+        // define non-ASCII label character (
+        RegexNode.define("<Comment>");
+
+        // hide comments in non-ASCII label "<Comment>"
+        regex.hideAll( "comment", "<.*?>", "<Comment>","*"); // non-greedy search
+        System.out.format("Tree with comments hidden:%s\n", regex.toString());
+
+        // getNodeReset("comment"); // reset "getNode" in case it was used in a previous loop that ended prematurely
+
+        // loop through comment nodes...
+        RegexNode commentNode=regex.getNode("comment");
+        while (commentNode != null) {
+            RegexNode nextNode=regex.getNode("comment"); // use this in case we want to delete/move commentNode
+            System.out.format("Found comment:%s\n",commentNode.getText());
+            commentNode=nextNode;
+        }
+
+        // retrieve the final text
+        regex.unignoreAll();
+        regex.unhideAll();
+        System.out.format("\nFinal text:'%s'\n", regex.getText());
+     }
+    }
+
+This program gives the following output.
+
+    Initial text:'foo foo foo <comment with foo> foo foo <more comments with foo>'
+
+    Tree with comments hidden:
+    0#Groot# "foo foo foo [§] foo foo [§]" Root [0] no groups       
+                          1 1         2 2
+      1#comment# "<comment with foo>" => 0#(12 13) <-99 1 2> no groups         
+                                   
+      2#comment# "<more comments with foo>" => 0#(22 23) <1 2 -99> no groups         
+                                      
+    #### Total number of nodes defined = 2.
+
+    Found comment:<comment with foo>
+    Found comment:<more comments with foo>
+
+    Final text:'foo foo foo <comment with foo> foo foo <more comments with foo>'
+
+## Example 3
+This example demonstrates how to move nodes around in the node tree.
+
+    public class Example3 {
+     public static void main(String[] args) {
+
+        // RegexNode example by Frank Thomas Tveter 2016.
+        // this example demonstrates how to move nodes around in the node tree
+        
+        // initialise
+        RegexNode regex=new RegexNode("foo foo foo <comment with foo> foo foo <more comments with foo>");
+        regex.setNodeName("Groot");
+        System.out.format("Initial text:'%s'\n\n", regex.getText());
+
+        // define non-ASCII label character (
+        RegexNode.define("<Comment>");
+
+        // hide comments in non-ASCII label "<Comment>"
+        regex.hideAll( "comment", "<.*?>", "<Comment>","*"); // non-gready search
+        System.out.format("Tree with comments hidden:%s\n", regex.toString());
+
+        // first and last comments
+        RegexNode firstNode=null;
+        RegexNode lastNode=null;
+
+        // loop through comment nodes, find first and last comment nodes...
+        RegexNode commentNode=regex.getNode("comment");
+        while (commentNode != null) {
+            RegexNode nextNode=regex.getNode("comment"); // use this in case we want to delete/move commentNode
+            System.out.format("Found comment:%s\n",commentNode.getText());
+            if (firstNode == null) { firstNode=commentNode;};
+            lastNode=commentNode;
+            commentNode=nextNode;
+        }
+
+        // swap first and last comment-nodes
+        if (firstNode != null && lastNode != null) {
+            RegexNode buffNode=new RegexNode("");
+            buffNode.replace(firstNode);
+            firstNode.replace(lastNode);
+            lastNode.replace(buffNode);
+            System.out.format("\nTree with comments swapped:%s\n", regex.toString());
+        }
+
+        // retrieve the final text
+        regex.unignoreAll();
+        regex.unhideAll();
+        System.out.format("Final text:'%s'\n", regex.getText());
+     }
+    }
+
+This program gives the following output.
+
+
+    Initial text:'foo foo foo <comment with foo> foo foo <more comments with foo>'
+
+    Tree with comments hidden:
+    0#Groot# "foo foo foo [§] foo foo [§]" Root [0] no groups       
+                          1 1         2 2
+      1#comment# "<comment with foo>" => 0#(12 13) <-99 1 2> no groups         
+                                
+      2#comment# "<more comments with foo>" => 0#(22 23) <1 2 -99> no groups         
+                                      
+    #### Total number of nodes defined = 2.
+
+    Found comment:<comment with foo>
+    Found comment:<more comments with foo>
+
+    Tree with comments swapped:
+    0#Groot# "foo foo foo [§] foo foo [§]" Root [0] no groups       
+                          2 2         1 1
+      2#comment# "<more comments with foo>" => 0#(12 13) <-99 2 1> no groups         
+                                      
+      1#comment# "<comment with foo>" => 0#(22 23) <2 1 -99> no groups         
+                                
+     #### Total number of nodes defined = 3.
+
+     Final text:'foo foo foo <more comments with foo> foo foo <comment with foo>'
+
+## Example 4
+This example demonstrates how to create a RegexNode tree structure directly.
+
+    public class Example4 {
+     public static void main(String[] args) {
+
+        // RegexNode example by Frank Thomas Tveter 2016.
+        // this example demonstrates how to create a RegexNode tree structure directly
+
+        RegexNode regex=new RegexNode("Groot:foo foo foo ¤ foo foo ¤;"
+                                          + "comment:<comment with foo>;"
+                                          + "comment:<more comments with foo>;",
+                                          ':',';','¤');
+
+        // print the tree
+        System.out.format("Tree:%s\n", regex.toString());
+
+        // retreive the final text
+        regex.unhideAll(); 
+        System.out.format("Final text:'%s'\n", regex.getText());
+     }
+    }
+
+This program gives the following output.
+
+    Tree:
+    0#Groot# "foo foo foo [¤] foo foo [¤]" Root [0] -1 groups       
+                          1 1         2 2
+      1#comment# "<comment with foo>" => 0#(12 13) <-99 1 2> -1 groups         
+                                 
+      2#comment# "<more comments with foo>" => 0#(22 23) <1 2 -99> -1 groups         
+                                       
+    #### Total number of nodes defined = 2.
+   
+    Final text:'foo foo foo <comment with foo> foo foo <more comments with foo>'
+    
+## Example 5
+This example demonstrates how to "unfold" and "fold" nodes, temporarily "unhiding" nodes.
+
+    public class Example5 {
+     public static void main(String[] args) {
+
+        // RegexNode example by Frank Thomas Tveter 2016.
+        // this example demonstrates how to "unfold" and "fold" nodes, temporarily "unhiding" nodes.
+
+        RegexNode regex=new RegexNode("Groot:foo foo foo ¤ foo foo ¤;"
+                                          + "comment:<comment with foo>;"
+                                          + "comment:<more comments with foo>;",
+                                          ':',';','¤');
+        RegexNode.define("<Fold>");
+
+        // print the tree
+        System.out.format("Tree:%s\n", regex.toString());
+
+        RegexNode firstNode=regex.getFirstNode("comment");
+
+        firstNode.unfold("<Fold>","<Fold>"); 
+        // print the tree
+        System.out.format("Tree with an unfolded comment:%s\n", regex.toString());
+
+
+        // change "foo" to "bar"
+        regex.replaceAll("foo","bar","Groot"); // replace all "foo" by "bar" in root node
+
+        // retreive the final text
+        regex.foldAll(); 
+        regex.unhideAll(); // un-hide all nodes
+        System.out.format("Final text:'%s'\n", regex.getText());
+     }
+    }
+
+This program gives the following output.
+
+    Tree:
+    0#Groot# "foo foo foo [¤] foo foo [¤]" Root [0] -1 groups       
+                          1 1         2 2
+      1#comment# "<comment with foo>" => 0#(12 13) <-99 1 2> -1 groups         
+                                    
+      2#comment# "<more comments with foo>" => 0#(22 23) <1 2 -99> -1 groups         
+                                      
+    #### Total number of nodes defined = 2.
+
+    Tree with an unfolded comment:
+    0#Groot# "foo foo foo [§]<comment with foo>[§] foo foo [¤]" Root [0] -1 groups       
+                          1 1                  3 3         2 2
+      1#comment# "" => 0#(12 13) <-99 1 3> -1 groups End3#         
+              
+         @labelFolded = "¤"
+      3#comment_# "" => 0#(31 32) <1 3 2> -1 groups Start1#          
+               
+         @matches = "1"
+      2#comment# "<more comments with foo>" => 0#(41 42) <3 2 -99> -1 groups         
+                                      
+    #### Total number of nodes defined = 3.
+
+    Final text:'bar bar bar <comment with bar> bar bar <more comments with foo>'
+
+## Example 6
+This example demonstrates how to hide groups in a pattern using hideall and hideNodeGroup.
+
+    public class Example6 {
+     public static void main(String[] args) {
+
+        // RegexNode example by Frank Thomas Tveter 2016.
+        // This example demonstrates how to hide groups in a pattern
+        // using hideall and hideNodeGroup.
+        
+        RegexNode regex=new RegexNode("Groot:foo foo foo ¤ foo foo ¤;"
+                                          + "comment:<comment with foo>;"
+                                          + "comment:<more comments with foo>;",
+                                          ':',';','¤');
+
+        // define non-ASCII label character (not originally in the text)
+        RegexNode.define("<Group>");
+
+        regex.hideAll( "foo", "(f+)(o+)", "<Group>","Groot"); // non-gready search, only on "Groot"-node
+        regex.hideNodeGroup("group1","X",1,"Groot","foo");
+        regex.hideNodeGroup("group2","Z",2,"Groot","foo");
+
+        System.out.format("Tree with groups:%s\n", regex.toString());
+     }
+    }
+
+This program gives the following output.
+
+    Tree with groups:
+    0#Groot# "[§] [§] [§] [¤] [§] [§] [¤]" Root [0] 2 groups "f"(10,11) "oo"(11,13)       
+              3 3 4 4 5 5 1 1 6 6 7 7 2 2
+      3#foo# "[X][ Z] " => 0#(0 1) <-99 3 4> 2 groups "f"(0,1) "oo"(1,2)     
+              8 813 13
+        8#group1# "f" => 3#(0 1) <-99 8 13> no groups        
+                   
+        13#group2# "oo" => 3#(1 2) <8 13 -99> no groups         
+                     
+      4#foo# "[X][ Z] " => 0#(2 3) <3 4 5> 2 groups "f"(0,1) "oo"(1,2)     
+              9 914 14
+        9#group1# "f" => 4#(0 1) <-99 9 14> no groups        
+                   
+        14#group2# "oo" => 4#(1 2) <9 14 -99> no groups         
+                     
+      5#foo# "[ X] [ Z] " => 0#(4 5) <4 5 1> 2 groups "f"(0,1) "oo"(1,2)     
+              10 1015 15
+        10#group1# "f" => 5#(0 1) <-99 10 15> no groups         
+                    
+        15#group2# "oo" => 5#(1 2) <10 15 -99> no groups         
+                     
+      1#comment# "<comment with foo>" => 0#(6 7) <5 1 6> -1 groups         
+                                   
+      6#foo# "[ X] [ Z] " => 0#(8 9) <1 6 7> 2 groups "f"(0,1) "oo"(1,2)     
+              11 1116 16
+        11#group1# "f" => 6#(0 1) <-99 11 16> no groups         
+                    
+        16#group2# "oo" => 6#(1 2) <11 16 -99> no groups         
+                     
+      7#foo# "[ X] [ Z] " => 0#(10 11) <6 7 2> 2 groups "f"(0,1) "oo"(1,2)     
+              12 1217 17
+        12#group1# "f" => 7#(0 1) <-99 12 17> no groups         
+                    
+        17#group2# "oo" => 7#(1 2) <12 17 -99> no groups         
+                     
+      2#comment# "<more comments with foo>" => 0#(12 13) <7 2 -99> -1 groups         
+                                         
+    #### Total number of nodes defined = 17.
+
+## Example 7
+This example demonstrates how to make a map to the node-strings.
+
+    public class Example7 {
+     public static void main(String[] args) {
+
+        // RegexNode example by Frank Thomas Tveter 2016.
+        // This example demonstrates how to make a map to the node-strings.
+        
+        RegexNode regex=new RegexNode("Groot:foo foo foo ¤ foo foo ¤;"
+                                          + "comment:<comment with foo>;"
+                                          + "comment:<more comments with foo>;",
+                                          ':',';','¤');
+
+        RegexNode.define("<Word>");
+        regex.hideAll( "word", "\\w+", "<Word>","comment"); // non-gready search
+
+        // print the tree
+        System.out.format("Tree:%s\n", regex.toString());
+
+        // make the node-string map
+        HashMap<String,ArrayList<RegexNode>> wordMap = regex.makeMap("comment","word");
+        ArrayList<RegexNode> fooList = wordMap.get("foo");
+
+        if (fooList != null) {
+            System.out.format("Found %d occurences of 'foo' in the comments.\n\n", fooList.size());
+        } else {
+            System.out.format("Found no occurences of 'foo' in the comments.\n\n");
+        }
+
+        // retrieve the final text
+        regex.unhideAll(); // un-hide all nodes
+        System.out.format("Final text:'%s'\n", regex.getText());
+     }
+    }
+
+This program gives the following output.
+
+    Tree:
+    0#Groot# "foo foo foo [¤] foo foo [¤]" Root [0] -1 groups       
+                          1 1         2 2
+      1#comment# "<[§] [§] [§]>" => 0#(12 13) <-99 1 2> no groups         
+                   3 3 4 4 5 5 
+        3#word# "comment" => 1#(1 2) <-99 3 4> no groups      
+                       
+        4#word# "with" => 1#(3 4) <3 4 5> no groups      
+                    
+        5#word# "foo" => 1#(5 6) <4 5 -99> no groups      
+                   
+      2#comment# "<[§] [§] [§] [§]>" => 0#(22 23) <1 2 -99> no groups         
+                   6 6 7 7 8 8 9 9 
+        6#word# "more" => 2#(1 2) <-99 6 7> no groups      
+                    
+        7#word# "comments" => 2#(3 4) <6 7 8> no groups      
+                        
+        8#word# "with" => 2#(5 6) <7 8 9> no groups      
+                    
+        9#word# "foo" => 2#(7 8) <8 9 -99> no groups      
+                   
+    #### Total number of nodes defined = 9.
+   
+    Found 2 occurences of 'foo' in the comments.
+   
+    Final text:'foo foo foo <comment with foo> foo foo <more comments with foo>'
+
+## Example 8
+This example demonstrates how to hide text that has not yet been hidden.
+
+    public class Example8 {
+     public static void main(String[] args) {
+
+        // RegexNode example by Frank Thomas Tveter 2016.
+        // This example demonstrates how to hide text that has not yet been hidden.
+        
+        RegexNode regex=new RegexNode("Groot:foo foo foo ¤ foo foo ¤;"
+                                          + "comment:<comment with foo>;"
+                                          + "comment:<more comments with foo>;",
+                                          ':',';','¤');
+        RegexNode.define("<rest>");
+        regex.hideTheRest("rest","<rest>");
+        System.out.format("Node tree: %s\n", regex.toString());
+
+        // retrieve the final text
+        regex.unhideAll(); // un-hide all nodes
+        System.out.format("Final text:'%s'\n", regex.getText());
+     }
+    }
+    
+This program gives the following output.
+
+    Node tree: 
+    0#Groot# "[§][¤][§][¤]" Root [0] -1 groups       
+              3 31 14 42 2
+      3#rest# "foo foo foo " => 0#(0 1) <-99 3 1> -1 groups      
+                       
+      1#comment# "<comment with foo>" => 0#(1 2) <3 1 4> -1 groups         
+                                
+      4#rest# " foo foo " => 0#(2 3) <1 4 2> -1 groups      
+                    
+      2#comment# "<more comments with foo>" => 0#(3 4) <4 2 -99> -1 groups         
+                                      
+    #### Total number of nodes defined = 4.
+
+    Final text:'foo foo foo <comment with foo> foo foo <more comments with foo>'
 
 ## Functions
 
