@@ -67,7 +67,7 @@ Let us create child nodes of text that matches the _regex_ `H\w*` or `W\w*`
 The default processing node name is set using the function `node()`.
 The default processing path is `"*"` which simply means 'any node'. 
 You may also use the path `"..."` meaning one or more nodes and `"$"` meaning the top of the node tree. 
-The default path can be changed with the function `path()`.
+The default path can be changed with the function `path()`, for instance `path("$","helloworld","...","text")`.
 
 Note the group captured above in the _regex_ `W(\\w*)`, we may create a node for this group using
 
