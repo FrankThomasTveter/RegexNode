@@ -599,7 +599,6 @@ For example
 
         RegexNode.define("<world>");
 
-
 ### Set defaults
 
         RegexNode node(String node)
@@ -623,7 +622,6 @@ Example:
 
 	regex.label("<world>");
 
-
 ### Convert to and from _tree-format_
 
         RegexNode decode()
@@ -636,7 +634,6 @@ Example:
 
 	regex.decode("helloworld:¤ ¤;hello:Hello;world:World;",':',';','¤')
 
-
 ### Debugging system
 
         void debugOn()
@@ -646,7 +643,6 @@ Example:
         String getIdentification()
         int getMaxIdentification()
         Integer getLocationLevel()
-
 
 ### Output
 The node tree structure can be displayed using `toString`. 
@@ -665,8 +661,6 @@ Example:
 
         System.out.format("Node tree: %s\n", regex.toString());
         System.out.format("Node text: %s\n", regex.getText());
-
-
 
 ### Create child nodes, hide substrings:
 
@@ -739,9 +733,8 @@ Text that has not been "hidden" yet, can be "hidden" using `hideTheRest()`.
 Example:
 
         regex.hideAll( "www", "W(\\w*)","<world>","$","helloworld");
-	regex.node("www").label("<world>").path("$","helloworld").hideAll("W(\\w*)");
-	regex.unhideAll("*");
-
+        regex.node("www").label("<world>").path("$","helloworld").hideAll("W(\\w*)");
+        regex.unhideAll("*");
 
 ### Find child nodes
 
@@ -870,7 +863,6 @@ Later you may re-fold and re-create the tree structure again.
 
 ### Copy `RegexNode`
 
-
         RegexNode duplicate()
         RegexNode duplicate(RegexNode parentNode)
         void copy(RegexNode blueprint)
@@ -989,7 +981,6 @@ You may mark labels with a prefex and suffix. If these are null, any earlier mar
         String translate()
         String translate(String replacementText)
 
-
 ### Ignore parts of the tree
 The "ignore"-feature can be used to make only certain nodes visible to the processing.
 "Ignorering" is in other words a method to deactivate pattern matching for parts of the 
@@ -1040,7 +1031,6 @@ The location is the numerical position in the tree.
         Object getAttribute(String attName, String[] name1, String... name2)
         Object getAttribute(String attName, String... path)
 
-
 ### Mapping and Listing  `RegexNode` occurences
 
         HashMap<String,ArrayList<RegexNode>> makeMap()
@@ -1051,6 +1041,3 @@ The location is the numerical position in the tree.
         ArrayList<RegexNode> makeList()
         ArrayList<RegexNode> makeList(String[] name1, String... name2)
         ArrayList<RegexNode> makeList(String... path)
-
-
-
